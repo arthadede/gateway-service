@@ -12,13 +12,9 @@ import (
 )
 
 func main() {
-	// Load configuration
 	config := loadConfig()
-
-	// Create router
 	router := mux.NewRouter()
 
-	// Setup routes
 	setupGatewayRoutes(router, config)
 
 	// Apply middleware

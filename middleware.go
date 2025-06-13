@@ -8,17 +8,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// setupMiddleware adds middleware to the router
 func setupMiddleware(router *mux.Router) http.Handler {
-	// Add logging middleware
 	loggingMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Call the next handler
 			next.ServeHTTP(w, r)
 
-			// Log the request
 			log.WithFields(log.Fields{
 				"method":      r.Method,
 				"path":        r.URL.Path,
@@ -29,7 +25,6 @@ func setupMiddleware(router *mux.Router) http.Handler {
 		})
 	}
 
-	// Add CORS middleware
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -45,6 +40,5 @@ func setupMiddleware(router *mux.Router) http.Handler {
 		})
 	}
 
-	// Apply middleware
 	return corsMiddleware(loggingMiddleware(router))
 }

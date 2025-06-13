@@ -10,15 +10,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// setupGatewayRoutes configures the routes for the gateway
 func setupGatewayRoutes(router *mux.Router, config Config) {
-	// Add health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}).Methods("GET")
 
-	// Configure routes for each service
 	for _, service := range config.Services {
 		targetURL, err := url.Parse(service.URL)
 		if err != nil {
@@ -31,7 +28,6 @@ func setupGatewayRoutes(router *mux.Router, config Config) {
 
 		proxy := httputil.NewSingleHostReverseProxy(targetURL)
 
-		// Customize the director function to handle path prefixes
 		originalDirector := proxy.Director
 		proxy.Director = func(req *http.Request) {
 			originalDirector(req)
@@ -48,7 +44,6 @@ func setupGatewayRoutes(router *mux.Router, config Config) {
 			}).Info("Forwarding request")
 		}
 
-		// Add error handler
 		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 			log.WithFields(log.Fields{
 				"service": service.Name,
@@ -64,7 +59,6 @@ func setupGatewayRoutes(router *mux.Router, config Config) {
 			})
 		}
 
-		// Register routes for each prefix
 		for _, prefix := range service.Prefixes {
 			router.PathPrefix(prefix).Handler(proxy)
 			log.WithFields(log.Fields{
@@ -75,7 +69,6 @@ func setupGatewayRoutes(router *mux.Router, config Config) {
 		}
 	}
 
-	// Add catch-all route for unmatched paths
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(log.Fields{
 			"method": r.Method,

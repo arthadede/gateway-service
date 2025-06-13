@@ -1,58 +1,54 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-// ServiceConfig holds the configuration for a microservice
 type ServiceConfig struct {
 	Name     string
 	URL      string
 	Prefixes []string
 }
 
-// Config holds the gateway configuration
 type Config struct {
 	Port     string
 	Services []ServiceConfig
 }
 
 func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Warn("Error loading .env file, using default environment variables")
+	}
+
 	// Configure logging
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 }
 
-// loadConfig loads the gateway configuration
-// In a real-world scenario, this would likely load from a file or environment variables
 func loadConfig() Config {
+	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
+	if authServiceURL == "" {
+		authServiceURL = "http://auth-service"
+		log.Warn("AUTH_SERVICE_URL not set, using default: ", authServiceURL)
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Warn("PORT not set, using default: ", port)
+	}
+
 	return Config{
-		Port: "8080",
+		Port: port,
 		Services: []ServiceConfig{
 			{
-				Name: "user-service",
-				URL:  "http://localhost:8081",
+				Name: "auth-service",
+				URL:  authServiceURL,
 				Prefixes: []string{
-					"/api/users",
-					"/api/auth",
-				},
-			},
-			{
-				Name: "product-service",
-				URL:  "http://localhost:8082",
-				Prefixes: []string{
-					"/api/products",
-					"/api/categories",
-				},
-			},
-			{
-				Name: "order-service",
-				URL:  "http://localhost:8083",
-				Prefixes: []string{
-					"/api/orders",
-					"/api/payments",
+					"/v1/api/auth",
 				},
 			},
 		},
