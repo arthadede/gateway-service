@@ -1,20 +1,17 @@
 package main
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httputil"
 	"net/url"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/proxy"
 	log "github.com/sirupsen/logrus"
 )
 
-func setupGatewayRoutes(router *mux.Router, config Config) {
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	}).Methods("GET")
+func setupGatewayRoutes(app *fiber.App, config Config) {
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(map[string]string{"status": "ok"})
+	})
 
 	for _, service := range config.Services {
 		targetURL, err := url.Parse(service.URL)
@@ -26,41 +23,35 @@ func setupGatewayRoutes(router *mux.Router, config Config) {
 			}).Fatal("Failed to parse service URL")
 		}
 
-		proxy := httputil.NewSingleHostReverseProxy(targetURL)
-
-		originalDirector := proxy.Director
-		proxy.Director = func(req *http.Request) {
-			originalDirector(req)
-			req.Header.Set("X-Gateway", "true")
-			req.URL.Host = targetURL.Host
-			req.URL.Scheme = targetURL.Scheme
-			req.Host = targetURL.Host
-
-			log.WithFields(log.Fields{
-				"service":      service.Name,
-				"method":       req.Method,
-				"path":         req.URL.Path,
-				"forwarded_to": targetURL.String(),
-			}).Info("Forwarding request")
-		}
-
-		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-			log.WithFields(log.Fields{
-				"service": service.Name,
-				"method":  r.Method,
-				"path":    r.URL.Path,
-				"error":   err.Error(),
-			}).Error("Proxy error")
-
-			w.WriteHeader(http.StatusBadGateway)
-			json.NewEncoder(w).Encode(map[string]string{
-				"error":   "Bad Gateway",
-				"message": "The service is currently unavailable",
-			})
-		}
-
 		for _, prefix := range service.Prefixes {
-			router.PathPrefix(prefix).Handler(proxy)
+			app.All(prefix+"*", func(c *fiber.Ctx) error {
+				log.WithFields(log.Fields{
+					"service":      service.Name,
+					"method":       c.Method(),
+					"path":         c.Path(),
+					"forwarded_to": targetURL.String() + c.Path(),
+				}).Info("Forwarding request")
+
+				c.Request().Header.Set("X-Gateway", "true")
+
+				url := targetURL.String() + c.Path()
+				if err := proxy.Do(c, url); err != nil {
+					log.WithFields(log.Fields{
+						"service": service.Name,
+						"method":  c.Method(),
+						"path":    c.Path(),
+						"error":   err.Error(),
+					}).Error("Proxy error")
+
+					return c.Status(fiber.StatusBadGateway).JSON(map[string]string{
+						"error":   "Bad Gateway",
+						"message": "The service is currently unavailable",
+					})
+				}
+
+				return nil
+			})
+
 			log.WithFields(log.Fields{
 				"service": service.Name,
 				"prefix":  prefix,
@@ -69,14 +60,13 @@ func setupGatewayRoutes(router *mux.Router, config Config) {
 		}
 	}
 
-	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	app.Use(func(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{
-			"method": r.Method,
-			"path":   r.URL.Path,
+			"method": c.Method(),
+			"path":   c.Path(),
 		}).Warn("No route matched")
 
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{
 			"error":   "Not Found",
 			"message": "The requested resource does not exist",
 		})

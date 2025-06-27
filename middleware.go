@@ -1,44 +1,34 @@
 package main
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	log "github.com/sirupsen/logrus"
 )
 
-func setupMiddleware(router *mux.Router) http.Handler {
-	loggingMiddleware := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
+func setupMiddleware(app *fiber.App) {
+	app.Use(func(c *fiber.Ctx) error {
+		start := time.Now()
 
-			next.ServeHTTP(w, r)
+		err := c.Next()
 
-			log.WithFields(log.Fields{
-				"method":      r.Method,
-				"path":        r.URL.Path,
-				"remote_addr": r.RemoteAddr,
-				"user_agent":  r.UserAgent(),
-				"duration_ms": time.Since(start).Milliseconds(),
-			}).Info("Request processed")
-		})
-	}
+		log.WithFields(log.Fields{
+			"method":      c.Method(),
+			"path":        c.Path(),
+			"remote_addr": c.IP(),
+			"user_agent":  c.Get("User-Agent"),
+			"duration_ms": time.Since(start).Milliseconds(),
+		}).Info("Request processed")
 
-	corsMiddleware := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		return err
+	})
 
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-
-	return corsMiddleware(loggingMiddleware(router))
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "*",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowHeaders:     "Content-Type, Authorization",
+		AllowCredentials: true,
+	}))
 }

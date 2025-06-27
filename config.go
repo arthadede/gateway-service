@@ -29,11 +29,11 @@ func init() {
 }
 
 func loadConfig() Config {
-	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
-	if authServiceURL == "" {
-		authServiceURL = "http://auth-service"
-		log.Warn("AUTH_SERVICE_URL not set, using default: ", authServiceURL)
-	}
+	//authServiceURL := os.Getenv("AUTH_SERVICE_URL")
+	//if authServiceURL == "" {
+	//	authServiceURL = "http://auth-service"
+	//	log.Warn("AUTH_SERVICE_URL not set, using default: ", authServiceURL)
+	//}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -42,15 +42,15 @@ func loadConfig() Config {
 	}
 
 	return Config{
-		Port: port,
+		Port:     port,
 		Services: []ServiceConfig{
-			{
-				Name: "auth-service",
-				URL:  authServiceURL,
-				Prefixes: []string{
-					"/v1/api/auth",
-				},
-			},
+			//{
+			//	Name: "auth-service",
+			//	URL:  authServiceURL,
+			//	Prefixes: []string{
+			//		"/v1/api/auth",
+			//	},
+			//},
 		},
 	}
 }

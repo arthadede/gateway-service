@@ -1,57 +1,48 @@
 package main
 
 import (
-	"context"
-	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	config := loadConfig()
-	router := mux.NewRouter()
 
-	setupGatewayRoutes(router, config)
-
-	// Apply middleware
-	handler := setupMiddleware(router)
-
-	// Configure server
-	server := &http.Server{
-		Addr:         ":" + config.Port,
-		Handler:      handler,
+	app := fiber.New(fiber.Config{
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
-	}
+	})
 
-	// Start server in a goroutine
+	setupGatewayRoutes(app, config)
+
+	setupMiddleware(app)
+
 	go func() {
 		log.WithFields(log.Fields{
 			"port": config.Port,
 		}).Info("Starting gateway server")
 
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := app.Listen(":" + config.Port); err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Fatal("Could not start server")
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	// Create a deadline to wait for
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
+	if err := app.ShutdownWithTimeout(15 * time.Second); err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("Error during server shutdown")
+	}
 
-	// Doesn't block if no connections, but will otherwise wait until the timeout deadline
-	server.Shutdown(ctx)
 	log.Info("Server gracefully stopped")
 }
