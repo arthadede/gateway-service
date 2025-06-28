@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func setupGatewayRoutes(app *fiber.App, config Config) {
+func SetupGatewayRoutes(app *fiber.App, config Config) {
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(map[string]string{"status": "ok"})
 	})

@@ -28,7 +28,7 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
-func loadConfig() Config {
+func LoadConfig() Config {
 	//authServiceURL := os.Getenv("AUTH_SERVICE_URL")
 	//if authServiceURL == "" {
 	//	authServiceURL = "http://auth-service"
@@ -37,7 +37,7 @@ func loadConfig() Config {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "3000"
 		log.Warn("PORT not set, using default: ", port)
 	}
 

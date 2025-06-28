@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func setupMiddleware(app *fiber.App) {
+func SetupMiddleware(app *fiber.App) {
 	app.Use(func(c *fiber.Ctx) error {
 		start := time.Now()
 
@@ -26,9 +26,8 @@ func setupMiddleware(app *fiber.App) {
 	})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*",
-		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
-		AllowHeaders:     "Content-Type, Authorization",
-		AllowCredentials: true,
+		AllowOrigins: "*",
+		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
+		AllowHeaders: "Content-Type, Authorization",
 	}))
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	config := loadConfig()
+	config := LoadConfig()
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  15 * time.Second,
@@ -18,9 +18,9 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	})
 
-	setupGatewayRoutes(app, config)
+	SetupGatewayRoutes(app, config)
 
-	setupMiddleware(app)
+	SetupMiddleware(app)
 
 	go func() {
 		log.WithFields(log.Fields{
